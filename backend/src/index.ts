@@ -1,5 +1,4 @@
 import Express from 'express'
-import { Server } from 'socket.io'
 import { createServer } from 'http'
 import { rootRoutes } from './routes/rootRoutes'
 import morgan from 'morgan'
@@ -10,20 +9,15 @@ import windowRoutes from './routes/windowRoute'
 import ticketRoutes from './routes/ticketRoute'
 import userRoutes from './routes/userRoute'
 import cors from 'cors'
+import { initializeSocket } from './socket'
 
 const PORT = process.env.PORT || 3000
 
 const app = Express()
 const httpServer = createServer(app)
-const io = new Server(httpServer)
-// Socket.io connection
-io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id)
-    socket.on('disconnect', () => {
-        console.log('User disconnected:', socket.id)
-    })
-})
 
+// Initialize Socket.IO
+initializeSocket(httpServer)
 
 // Middleware
 app.use(Express.json())

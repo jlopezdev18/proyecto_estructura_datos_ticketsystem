@@ -3,6 +3,7 @@ import Ticket from '../models/ticket';
 import {handleError} from '../utils/errorHandler';
 import Window from '../models/window';
 import { Op } from 'sequelize';
+import { io } from '../socket';
 
 
 
@@ -98,7 +99,7 @@ export const createTicket = async (req: Request, res: Response): Promise<void> =
     
     const ticketNumber = nextNumber.toString().padStart(3, '0');
     const ticketCode = `${serviceCode}${ticketNumber}`;
-
+    console.log(req.body);
     const newTicket = await Ticket.create({
       ...req.body,
       code: ticketCode
@@ -106,6 +107,14 @@ export const createTicket = async (req: Request, res: Response): Promise<void> =
 
     const queue = queues[`${service}.${req.body.isPriority ? 'prioritaria' : 'normal'}` as keyof typeof queues];
     queue.addTicket(newTicket);
+    
+    // Emit socket event for new ticket
+    io.emit('newTicket', {
+      service: service,
+    });
+    console.log('newTicket', {
+      service: service,
+    });
     
     res.status(201).json(newTicket);
   } catch (error) {
@@ -142,3 +151,153 @@ export const deleteTicket = async (req: Request, res: Response): Promise<void> =
   }
 };
 
+
+export const getQueueTickets = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { services, isPriority } = req.body as { services: string[], isPriority: boolean };
+
+    const tickets = [];
+    for (const service of services) {
+      const queue = queues[`${service}.${isPriority ? 'prioritaria' : 'normal'}` as keyof typeof queues];
+      tickets.push(...queue.getAllTickets());
+    }
+    res.json(tickets);
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+
+export const getNextTicket = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { services, isPriority, windowId } = req.body as { services: string[], isPriority: boolean, windowId: number };
+    let ticket = null;
+    for (const service of services) {
+      const queue = queues[`${service}.${isPriority ? 'prioritaria' : 'normal'}` as keyof typeof queues];
+      ticket = queue.getNextTicket();
+      if (ticket) break;
+    }
+    if (ticket) {
+      const window = await Window.findByPk(windowId);
+      if (!window) {
+        res.status(404).json({error: 'Window not found'});
+        return;
+      }
+      if (window) {
+        await window.update({
+          currentTicketId: ticket.id
+        });
+      }
+      await ticket.update({
+        status: 'in_progress',
+        calledAt: new Date(),
+        attendedAt: new Date()
+      });
+      io.emit('ticketAttended', {
+        service: ticket.service,
+        ticket: ticket.code
+      });
+      io.emit('ticketCalled', {
+        service: ticket.service,
+        ticket: ticket.code,
+        windowNumber: window.number
+      });
+    }
+    res.json(ticket);
+  } catch (error) {
+    handleError(res, error);
+  }
+}
+
+
+export const callAgain = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { ticketId, windowId } = req.body as { ticketId: number, windowId: number };
+    const ticket = await Ticket.findByPk(ticketId);
+    const window = await Window.findByPk(windowId);
+
+    if (!ticket) {
+      res.status(404).json({error: 'Ticket not found'});
+      return;
+    }
+    if (!window) {
+      res.status(404).json({error: 'Window not found'});
+      return;
+    }
+    await ticket.update({
+      calledAt: new Date(),
+    });
+    io.emit('ticketCalled', {
+      service: ticket.service,
+      ticket: ticket.code,
+      windowNumber: window.number
+    });
+    res.json(ticket);
+  } catch (error) {
+    handleError(res, error);
+  }
+}
+
+export const markAsAbsent = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { ticketId, windowId } = req.body as { ticketId: number, windowId: number };
+    const ticket = await Ticket.findByPk(ticketId);
+    const window = await Window.findByPk(windowId);
+    if (!ticket) {
+      res.status(404).json({error: 'Ticket not found'});
+      return;
+    }
+    if (!window) {
+      res.status(404).json({error: 'Window not found'});
+      return;
+    }
+    await ticket.update({
+      status: 'finished',
+      finishedAt: new Date(),
+      isAbsent: true
+    });
+    await window.update({
+      currentTicketId: null
+    });
+    io.emit('ticketFinished', {
+      service: ticket.service,
+      ticket: ticket.code,
+      windowNumber: window.number
+    });
+    res.json(ticket);
+  } catch (error) {
+    handleError(res, error);
+  }
+}
+
+export const finishTicket = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { ticketId, windowId } = req.body as { ticketId: number, windowId: number };
+    const ticket = await Ticket.findByPk(ticketId);
+    const window = await Window.findByPk(windowId);
+    if (!ticket) {
+      res.status(404).json({error: 'Ticket not found'});
+      return;
+    }
+    if (!window) {
+      res.status(404).json({error: 'Window not found'});
+      return;
+    }
+    await ticket.update({
+      status: 'finished',
+      finishedAt: new Date()
+    });
+    await window.update({
+      currentTicketId: null
+    });
+
+    io.emit('ticketFinished', {
+      service: ticket.service,
+      ticket: ticket.code,
+      windowNumber: window.number
+    });
+    res.json(ticket);
+  } catch (error) {
+    handleError(res, error);
+  }
+}

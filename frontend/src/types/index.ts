@@ -13,8 +13,17 @@ export interface Ticket {
   isPriority: boolean;
   clientName?: string;
   clientIdentification: string;
+  currentTicketId?: number;
+  calledAt?: string;
   createdAt: string;
   status: string;
 }
 
 export type Screen = 'identification' | 'services' | 'priority' | 'ticket';
+
+export type Window = {
+  id: number;
+  number: number;
+  services: string[];
+  currentTicketId?: number;
+}

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   Clock, 
   User, 
@@ -15,15 +15,10 @@ import {
   AlertCircle,
   Calendar
 } from 'lucide-react';
-
-interface Ticket {
-  id: string;
-  number: number;
-  clientName?: string;
-  service: string;
-  type: 'normal' | 'priority';
-  createdAt: Date;
-}
+import { WindowSelection } from '../../components/cashier/WindowSelection';
+import type { Window, Ticket } from '@/types';
+import axios from "axios";
+import { useSocket } from "@/hooks/useSocket";
 
 interface CurrentTicket extends Ticket {
   startTime: Date;
@@ -43,26 +38,15 @@ export const Route = createFileRoute('/cashier/')({
 })
 
 function RouteComponent() {
-  const [normalQueue, setNormalQueue] = useState<Ticket[]>([
-    { id: '1', number: 101, clientName: 'María García', service: 'Consulta General', type: 'normal', createdAt: new Date() },
-    { id: '2', number: 102, service: 'Trámite Documentos', type: 'normal', createdAt: new Date() },
-    { id: '3', number: 103, clientName: 'Carlos López', service: 'Información', type: 'normal', createdAt: new Date() },
-  ]);
 
-  const [priorityQueue, setPriorityQueue] = useState<Ticket[]>([
-    { id: '4', number: 201, clientName: 'Ana Rodríguez', service: 'Urgente - Renovación', type: 'priority', createdAt: new Date() },
-    { id: '5', number: 202, service: 'Consulta Médica', type: 'priority', createdAt: new Date() },
-  ]);
+  const socket = useSocket();
 
-  const [currentTicket, setCurrentTicket] = useState<CurrentTicket | null>({
-    id: '0',
-    number: 100,
-    clientName: 'Juan Pérez',
-    service: 'Consulta General',
-    type: 'normal',
-    createdAt: new Date(),
-    startTime: new Date(Date.now() - 5 * 60 * 1000) // 5 minutes ago
-  });
+  const [currentWindow, setCurrentWindow] = useState<Window | null>(null);
+  const [normalQueue, setNormalQueue] = useState<Ticket[]>([]);
+
+  const [priorityQueue, setPriorityQueue] = useState<Ticket[]>([]);
+
+  const [currentTicket, setCurrentTicket] = useState<CurrentTicket | null>(null);
 
   const [attendanceTime, setAttendanceTime] = useState(0);
 
@@ -74,6 +58,62 @@ function RouteComponent() {
     absent: 3,
     currentWaitTime: 12
   });
+  const getTickets = async () => {
+    if (!currentWindow) return;
+    const normalQueueResponse = await axios.post(`http://localhost:3000/api/tickets/queue`, {
+      services: currentWindow.services,
+      isPriority: false
+    });
+    const priorityQueueResponse = await axios.post(`http://localhost:3000/api/tickets/queue`, {
+      services: currentWindow.services,
+      isPriority: true
+    });
+    setNormalQueue(normalQueueResponse.data);
+    setPriorityQueue(priorityQueueResponse.data);
+  }
+
+  useEffect(() => {
+    if (!socket) return;
+    socket.on('newTicket', (data) => {
+      if (!currentWindow) return;
+      if (currentWindow.services.includes(data.service)) {
+        getTickets();
+      }
+    });
+
+    socket.on('ticketAttended', (data) => {
+      if (!currentWindow) return;
+      if (currentWindow.services.includes(data.service)) {
+        getTickets();
+      }
+    });
+
+    return () => {
+      socket.off('newTicket');
+      socket.off('ticketAttended');
+    };
+
+  }, [socket, currentWindow, currentTicket]);
+
+  useEffect(() => {
+    if (!currentWindow) return;
+
+    const fetchCurrentTicket = async () => {
+      if (!currentWindow.currentTicketId) return;
+      const ticket = await axios.get(`http://localhost:3000/api/tickets/${currentWindow.currentTicketId}`);
+      setCurrentTicket({
+        ...ticket.data,
+        startTime: new Date()
+      });
+    }
+    fetchCurrentTicket();
+  }, [currentWindow]);
+
+
+
+  useEffect(() => {
+    getTickets();
+  }, [currentWindow]);
 
   // Update attendance time every second
   useEffect(() => {
@@ -93,16 +133,16 @@ function RouteComponent() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const callNextTicket = (queueType: 'normal' | 'priority') => {
+  const callNextTicket = async (queueType: 'normal' | 'priority') => {
+    if (!currentWindow) return;
     let nextTicket: Ticket | undefined;
-    
-    if (queueType === 'normal') {
-      nextTicket = normalQueue[0];
-      setNormalQueue(prev => prev.slice(1));
-    } else {
-      nextTicket = priorityQueue[0];
-      setPriorityQueue(prev => prev.slice(1));
-    }
+    const response = await axios.post(`http://localhost:3000/api/tickets/next`, {
+      services: currentWindow.services,
+      isPriority: queueType === 'priority',
+      windowId: currentWindow.id
+    });
+    nextTicket = response.data;
+    console.log(nextTicket);
 
     if (nextTicket) {
       setCurrentTicket({
@@ -113,22 +153,41 @@ function RouteComponent() {
     }
   };
 
-  const finishTicket = () => {
+  const finishTicket = async () => {
+    if (!currentWindow || !currentTicket) return;
+    axios.post(`http://localhost:3000/api/tickets/finish`, {
+      ticketId: currentTicket.id,
+      windowId: currentWindow.id
+    });
     setCurrentTicket(null);
     setAttendanceTime(0);
   };
 
-  const markAsAbsent = () => {
+  const markAsAbsent = async () => {
+    if (!currentWindow || !currentTicket) return;
+
+    axios.post(`http://localhost:3000/api/tickets/mark-as-absent`, {
+      ticketId: currentTicket.id,
+      windowId: currentWindow.id
+    });
     setCurrentTicket(null);
     setAttendanceTime(0);
+
   };
 
   const callAgain = () => {
-    if (currentTicket) {
-      // In real app, this would trigger announcement system
-      console.log(`Calling ticket ${currentTicket.number} again`);
+    if (currentTicket && currentWindow) {
+      axios.post(`http://localhost:3000/api/tickets/call-again`, {
+        ticketId: currentTicket.id,
+        windowId: currentWindow.id
+      });
     }
   };
+
+  // Window selection screen
+  if (!currentWindow) {
+    return <WindowSelection onWindowSelect={setCurrentWindow} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -142,7 +201,7 @@ function RouteComponent() {
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-gray-900">Sistema de Tickets</h1>
-                <p className="text-sm text-gray-500">Panel de Cajero</p>
+                <p className="text-sm text-gray-500">Panel de Cajero - Ventanilla {currentWindow.number}</p>
               </div>
             </div>
             <div className="flex items-center space-x-2 text-sm text-gray-600">
@@ -170,13 +229,13 @@ function RouteComponent() {
                   <div className="space-y-4">
                     <div className="flex items-center space-x-3">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        currentTicket.type === 'priority' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
+                        currentTicket.isPriority ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
                       }`}>
-                        {currentTicket.type === 'priority' ? <Star className="w-5 h-5" /> : <Hash className="w-5 h-5" />}
+                        {currentTicket.isPriority ? <Star className="w-5 h-5" /> : <Hash className="w-5 h-5" />}
                       </div>
                       <div>
                         <p className="text-sm text-gray-500">Número de Ticket</p>
-                        <p className="text-2xl font-bold text-gray-900">#{currentTicket.number}</p>
+                        <p className="text-2xl font-bold text-gray-900">#{currentTicket.code}</p>
                       </div>
                     </div>
                     <div>
@@ -280,7 +339,7 @@ function RouteComponent() {
                           {index + 1}
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">#{ticket.number}</p>
+                          <p className="font-medium text-gray-900">#{ticket.code}</p>
                           <p className="text-sm text-gray-500">{ticket.service}</p>
                           {ticket.clientName && (
                             <p className="text-xs text-gray-400">{ticket.clientName}</p>
@@ -326,7 +385,7 @@ function RouteComponent() {
                           {index + 1}
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">#{ticket.number}</p>
+                          <p className="font-medium text-gray-900">#{ticket.code}</p>
                           <p className="text-sm text-gray-500">{ticket.service}</p>
                           {ticket.clientName && (
                             <p className="text-xs text-gray-400">{ticket.clientName}</p>

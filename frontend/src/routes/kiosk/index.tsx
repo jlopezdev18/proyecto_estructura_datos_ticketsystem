@@ -59,6 +59,7 @@ function RouteComponent() {
   };
 
   const handlePrioritySelect = async (priority: boolean) => {
+    console.log(selectedService, priority, clientName, userId);
     setIsPriority(priority);
     setIsLoading(true);
 
@@ -66,7 +67,7 @@ function RouteComponent() {
     try {
       const response = await axios.post('http://localhost:3000/api/tickets', {
         service: selectedService,
-        isPriority,
+        isPriority: priority,
         clientName,
         clientIdentification: userId
       });

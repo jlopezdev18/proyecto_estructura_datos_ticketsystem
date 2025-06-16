@@ -16,7 +16,7 @@ class Window extends Model<
   declare id: CreationOptional<number>;
   declare number: number;
   // declare userId: number; // FK a Usuario
-  declare currentTicketId?: number; // FK opcional a Ticket
+  declare currentTicketId?: number | null; // FK opcional a Ticket
   declare services: string;
 }
 
@@ -26,7 +26,7 @@ Window.init(
     number: DataTypes.INTEGER,
     // userId: { type: DataTypes.INTEGER, allowNull: false },
     services: { type: DataTypes.STRING, allowNull: false },
-    currentTicketId: { type: DataTypes.INTEGER, allowNull: true },
+    currentTicketId: { type: DataTypes.INTEGER, allowNull: true, defaultValue: null },
   },
   { sequelize, modelName: "Window" }
 );

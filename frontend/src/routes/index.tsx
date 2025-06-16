@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { io } from "socket.io-client";
 import { Button } from "@mui/material";
+import AdminInterface from "../components/admin_screen/AdminInterface";
 
 export const Route = createFileRoute("/")({
   component: RouteComponent,
@@ -18,8 +19,7 @@ function RouteComponent() {
 
   return (
     <div>
-      <h1>Welcome to the Ticketing System</h1>
-      <Button variant="contained">Hello world</Button>
+      <AdminInterface />
     </div>
   );
 }

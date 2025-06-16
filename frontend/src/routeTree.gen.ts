@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as PanelRouteImport } from './routes/panel'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as KioskIndexRouteImport } from './routes/kiosk/index'
+import { Route as CashierIndexRouteImport } from './routes/cashier/index'
 
 const PanelRoute = PanelRouteImport.update({
   id: '/panel',
@@ -22,31 +24,49 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const KioskIndexRoute = KioskIndexRouteImport.update({
+  id: '/kiosk/',
+  path: '/kiosk/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CashierIndexRoute = CashierIndexRouteImport.update({
+  id: '/cashier/',
+  path: '/cashier/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/panel': typeof PanelRoute
+  '/cashier': typeof CashierIndexRoute
+  '/kiosk': typeof KioskIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/panel': typeof PanelRoute
+  '/cashier': typeof CashierIndexRoute
+  '/kiosk': typeof KioskIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/panel': typeof PanelRoute
+  '/cashier/': typeof CashierIndexRoute
+  '/kiosk/': typeof KioskIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/panel'
+  fullPaths: '/' | '/panel' | '/cashier' | '/kiosk'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/panel'
-  id: '__root__' | '/' | '/panel'
+  to: '/' | '/panel' | '/cashier' | '/kiosk'
+  id: '__root__' | '/' | '/panel' | '/cashier/' | '/kiosk/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   PanelRoute: typeof PanelRoute
+  CashierIndexRoute: typeof CashierIndexRoute
+  KioskIndexRoute: typeof KioskIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +85,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/kiosk/': {
+      id: '/kiosk/'
+      path: '/kiosk'
+      fullPath: '/kiosk'
+      preLoaderRoute: typeof KioskIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cashier/': {
+      id: '/cashier/'
+      path: '/cashier'
+      fullPath: '/cashier'
+      preLoaderRoute: typeof CashierIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   PanelRoute: PanelRoute,
+  CashierIndexRoute: CashierIndexRoute,
+  KioskIndexRoute: KioskIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

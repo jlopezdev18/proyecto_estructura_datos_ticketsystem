@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { io } from "socket.io-client";
-import { Button } from "@mui/material";
 import AdminInterface from "../components/admin_screen/AdminInterface";
 
 export const Route = createFileRoute("/")({

@@ -21,12 +21,19 @@ import {
   Select,
   Stack,
   Container,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
   type SelectChangeEvent,
 } from "@mui/material"
 import Grid from "@mui/material/Grid"
-import { Settings, Logout, Description, PersonAdd, PersonAddAlt1 } from "@mui/icons-material"
+import { Settings, Logout, Description, PersonAdd, PersonAddAlt1, Person } from "@mui/icons-material"
 
-import { WINDOW_OPERATORS } from "../../constants/mockData"
+import { CLIENTS, WINDOW_OPERATORS } from "../../constants/mockData"
 import { useTicketManagement } from "../../hooks/useTicketManagment"
 import { showToast, showInfoToast } from "../../utils/notifications"
 import { CurrentTicketCard } from "../admin_screen/CurrentTicketCard"
@@ -40,6 +47,8 @@ export default function AdminInterface() {
   const [clientDialogOpen, setClientDialogOpen] = useState(false)
   const [employeeDialogOpen, setEmployeeDialogOpen] = useState(false)
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
+  const [clientsViewDialogOpen, setClientsViewDialogOpen] = useState(false)
+
 
   const {
     currentTicket,
@@ -124,6 +133,15 @@ export default function AdminInterface() {
               >
                 <PersonAdd sx={{ mr: 1 }} />
                 Nuevo Cliente
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  handleMenuClose()
+                  setClientsViewDialogOpen(true)
+                }}
+              >
+                <Person sx={{ mr: 1 }} />
+                Ver Clientes
               </MenuItem>
               <MenuItem
                 onClick={() => {
@@ -241,6 +259,50 @@ export default function AdminInterface() {
           <Button onClick={() => setLogoutDialogOpen(false)}>Cancelar</Button>
           <Button variant="contained" color="error">
             Sí, cerrar sesión
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={clientsViewDialogOpen} onClose={() => setClientsViewDialogOpen(false)} maxWidth="lg" fullWidth>
+        <DialogTitle>Lista de Clientes</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Todos los clientes registrados en el sistema.
+          </Typography>
+          <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
+            <Table stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell>
+                    <strong>Cédula</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Nombre Completo</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Teléfono</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Fecha de Registro</strong>
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {CLIENTS.map((client) => (
+                  <TableRow key={client.id} hover>
+                    <TableCell>{client.cedula}</TableCell>
+                    <TableCell>{client.nombre}</TableCell>
+                    <TableCell>{client.telefono}</TableCell>
+                    <TableCell>{client.fechaRegistro}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setClientsViewDialogOpen(false)} variant="contained">
+            Cerrar
           </Button>
         </DialogActions>
       </Dialog>

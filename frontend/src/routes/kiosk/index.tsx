@@ -4,7 +4,6 @@ import { NumericKeypad } from '../../components/kiosk/NumericKeyboard';
 import { ServiceCard } from '../../components/kiosk/ServiceCard';
 import { TicketDisplay } from '../../components/kiosk/TicketDisplay';
 import { services } from '../../data/services';
-import { useTicketGenerator } from '../../hooks/useTicketGenerator';
 import type { Screen, Ticket } from '../../types';
 import { User, ArrowRight, CheckCircle, Clock, Heart } from 'lucide-react';
 import axios, { AxiosError } from 'axios';
@@ -19,7 +18,6 @@ function RouteComponent() {
   const [selectedService, setSelectedService] = useState('');
   const [currentTicket, setCurrentTicket] = useState<Ticket | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { generateTicket } = useTicketGenerator();
   const [clientName, setClientName] = useState<string | null>(null);
   const [isPriority, setIsPriority] = useState(false);
 

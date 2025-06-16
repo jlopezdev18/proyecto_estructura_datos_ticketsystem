@@ -24,6 +24,19 @@ export const getClientById = async (req: Request, res: Response): Promise<void> 
   }
 };
 
+export const getClientByIdentification  = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const client = await Client.findOne({ where: { identification: req.params.identification } });
+    if (!client) {
+      res.status(404).json({ error: 'Client not found' });
+      return;
+    }
+    res.json(client);
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
 export const createClient = async (req: Request, res: Response): Promise<void> => {
   try {
     const newClient = await Client.create(req.body);

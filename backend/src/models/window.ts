@@ -7,7 +7,7 @@ import {
 } from "sequelize";
 import sequelize from "../database.js";
 import Ticket from "./ticket.js";
-import User from "./user.js";
+// import User from "./user.js";
 
 class Window extends Model<
   InferAttributes<Window>,
@@ -15,27 +15,29 @@ class Window extends Model<
 > {
   declare id: CreationOptional<number>;
   declare number: number;
-  declare userId: number; // FK a Usuario
+  // declare userId: number; // FK a Usuario
   declare currentTicketId?: number; // FK opcional a Ticket
+  declare services: string;
 }
 
 Window.init(
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     number: DataTypes.INTEGER,
-    userId: { type: DataTypes.INTEGER, allowNull: false },
+    // userId: { type: DataTypes.INTEGER, allowNull: false },
+    services: { type: DataTypes.STRING, allowNull: false },
     currentTicketId: { type: DataTypes.INTEGER, allowNull: true },
   },
   { sequelize, modelName: "Window" }
 );
 
 // Define asociaciones con foreignKey explícito y consistente
-Window.belongsTo(User, {
-  foreignKey: "userId",
-  onDelete: "SET NULL",
-  onUpdate: "CASCADE",
-});
-User.hasMany(Window, { foreignKey: "userId" });
+// Window.belongsTo(User, {
+//   foreignKey: "userId",
+//   onDelete: "SET NULL",
+//   onUpdate: "CASCADE",
+// });
+// User.hasMany(Window, { foreignKey: "userId" });
 
 Window.belongsTo(Ticket, {
   foreignKey: "currentTicketId",

@@ -9,16 +9,9 @@ import {
   Volume2,
   Image,
 } from "lucide-react";
-
-interface Ticket {
-  id: string;
-  number: number;
-  customerName: string;
-  service: string;
-  waitTime: number;
-  priority: "normal" | "high" | "urgent";
-  status: "waiting" | "calling" | "serving";
-}
+import axios from "axios";
+import type { Ticket } from "../types";
+import { useSocket } from "@/hooks/useSocket";
 
 interface Advertisement {
   id: string;
@@ -28,13 +21,18 @@ interface Advertisement {
   duration: number;
 }
 
+interface TicketWithWindow extends Ticket {
+  windowNumber: number;
+}
+
 export const Route = createFileRoute("/panel")({
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const [currentTicket, setCurrentTicket] = useState<Ticket | null>(null);
-  const [waitingTickets, setWaitingTickets] = useState<Ticket[]>([]);
+  const socket = useSocket();
+  const [currentTicket, setCurrentTicket] = useState<{ticket: string, windowNumber: number, service: string} | null>(null);
+  const [attendedTickets, setAttendedTickets] = useState<TicketWithWindow[]>([]);
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -66,58 +64,23 @@ function RouteComponent() {
     },
   ];
 
-  const mockTickets: Ticket[] = [
-    {
-      id: "1",
-      number: 47,
-      customerName: "María González",
-      service: "Consulta General",
-      waitTime: 15,
-      priority: "urgent",
-      status: "calling",
-    },
-    {
-      id: "2",
-      number: 48,
-      customerName: "Carlos López",
-      service: "Renovación de Documentos",
-      waitTime: 8,
-      priority: "high",
-      status: "waiting",
-    },
-    {
-      id: "3",
-      number: 49,
-      customerName: "Ana Martínez",
-      service: "Información de Servicios",
-      waitTime: 12,
-      priority: "normal",
-      status: "waiting",
-    },
-    {
-      id: "4",
-      number: 50,
-      customerName: "Pedro Rodríguez",
-      service: "Trámite Especial",
-      waitTime: 5,
-      priority: "high",
-      status: "waiting",
-    },
-    {
-      id: "5",
-      number: 51,
-      customerName: "Laura Fernández",
-      service: "Consulta General",
-      waitTime: 18,
-      priority: "normal",
-      status: "waiting",
-    },
-  ];
+  const getTickets = async () => {
+    const response = await axios.get(`http://localhost:3000/api/windows`);
+    const ticketsPromises: Promise<TicketWithWindow>[] = response.data.filter((window:any) => window.currentTicketId).map(async (window:any) => {
+      const ticket = await axios.get(`http://localhost:3000/api/tickets/${window.currentTicketId}`);
+      return {
+        ...ticket.data,
+        windowNumber: window.number
+      };
+    });
+    const tickets = await Promise.all(ticketsPromises);
+    setAttendedTickets(tickets);
+  };
 
   useEffect(() => {
-    setCurrentTicket(mockTickets.find((t) => t.status === "calling") || null);
-    setWaitingTickets(mockTickets.filter((t) => t.status === "waiting"));
+    getTickets();
   }, []);
+
 
   // Rotate advertisements
   useEffect(() => {
@@ -135,30 +98,8 @@ function RouteComponent() {
     return () => clearInterval(timer);
   }, []);
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "urgent":
-        return "bg-red-100 text-red-800 border-red-200";
-      case "high":
-        return "bg-orange-100 text-orange-800 border-orange-200";
-      default:
-        return "bg-blue-100 text-blue-800 border-blue-200";
-    }
-  };
-
-  const getPriorityIcon = (priority: string) => {
-    switch (priority) {
-      case "urgent":
-        return <AlertCircle className="w-4 h-4" />;
-      case "high":
-        return <Clock className="w-4 h-4" />;
-      default:
-        return <CheckCircle className="w-4 h-4" />;
-    }
-  };
-
-  const callTicket = () => {
-    const texto = "Ticket Z,25, favor presentarse a la  ventanilla 12";
+  const callTicket = (ticket: string, windowNumber: number, service: string) => {
+    const texto = `Ticket ${ticket}, favor presentarse a la  ventanilla ${windowNumber}`;
 
     const speech = new SpeechSynthesisUtterance(texto);
     speech.lang = "es-HN"; // Puedes usar "en-US", "es-ES", etc.
@@ -166,6 +107,30 @@ function RouteComponent() {
     speech.rate = 1; // Ajusta la velocidad de la voz (0.1 a 10)
     window.speechSynthesis.speak(speech);
   };
+
+  useEffect(() => {
+    if (!socket) return;
+    socket.on("ticketCalled", async (data: any) => {
+      
+      callTicket(data.ticket, data.windowNumber, data.service);
+      setCurrentTicket({
+        ticket: data.ticket,
+        service: data.service,
+        windowNumber: data.windowNumber
+      });
+      getTickets();
+    });
+    socket.on("ticketFinished", (data: any) => {
+      getTickets();
+      if (currentTicket?.ticket === data.ticket) {
+        setCurrentTicket(null);
+      }
+    });
+    return () => {
+      socket.off("ticketCalled");
+      socket.off("ticketFinished");
+    };
+  }, [socket]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -212,10 +177,10 @@ function RouteComponent() {
               </div>
               <div className="bg-white/20 rounded-2xl p-6 inline-block backdrop-blur-sm">
                 <div className="text-6xl font-bold mb-2">
-                  #{currentTicket.number}
+                  {currentTicket.ticket}
                 </div>
                 <div className="text-xl font-medium mb-1">
-                  {currentTicket.customerName}
+                  Ventanilla {currentTicket.windowNumber}
                 </div>
                 <div className="text-lg opacity-90">
                   {currentTicket.service}
@@ -242,8 +207,8 @@ function RouteComponent() {
               <div className="relative">
                 <div className="aspect-video bg-slate-100 overflow-hidden">
                   <img
-                    src={advertisements[currentAdIndex].content}
-                    alt={advertisements[currentAdIndex].title}
+                    src={advertisements[currentAdIndex]?.content}
+                    alt={advertisements[currentAdIndex]?.title}
                     className="w-full h-full object-cover transition-opacity duration-500"
                   />
                 </div>
@@ -314,60 +279,39 @@ function RouteComponent() {
                       Tickets en Atención
                     </h3>
                   </div>
-                  <div className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
-                    {waitingTickets.length} en cola
-                  </div>
+
                 </div>
               </div>
 
               <div className="p-6">
                 <div className="space-y-4">
-                  {waitingTickets.map((ticket, index) => (
+                  {attendedTickets.map((ticket, index) => (
                     <div
-                      onClick={callTicket}
                       key={ticket.id}
                       className="bg-slate-50 rounded-xl p-5 border border-slate-200 hover:border-slate-300 transition-all duration-200 hover:shadow-md transform hover:-translate-y-1"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           <div className="bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center font-bold text-lg">
-                            #{ticket.number}
+                            #
                           </div>
                           <div>
                             <h4 className="font-semibold text-slate-900 text-lg">
-                              {ticket.customerName}
+                              {ticket.code}
                             </h4>
                             <p className="text-slate-600">{ticket.service}</p>
                           </div>
                         </div>
 
                         <div className="flex items-center space-x-4">
-                          <div
-                            className={`px-3 py-1 rounded-full text-sm font-medium border ${getPriorityColor(ticket.priority)} flex items-center space-x-1`}
-                          >
-                            {getPriorityIcon(ticket.priority)}
-                            <span className="capitalize">
-                              {ticket.priority === "urgent"
-                                ? "Urgente"
-                                : ticket.priority === "high"
-                                  ? "Alta"
-                                  : "Normal"}
-                            </span>
-                          </div>
+
+
+       
 
                           <div className="text-right">
-                            <p className="text-sm text-slate-500">
-                              Tiempo de espera
-                            </p>
-                            <p className="font-semibold text-slate-900">
-                              {ticket.waitTime} min
-                            </p>
-                          </div>
-
-                          <div className="text-right">
-                            <p className="text-sm text-slate-500">Posición</p>
+                            <p className="text-sm text-slate-500">Ventanilla</p>
                             <p className="font-bold text-2xl text-blue-600">
-                              {index + 1}
+                              {ticket.windowNumber}
                             </p>
                           </div>
                         </div>
@@ -376,7 +320,7 @@ function RouteComponent() {
                   ))}
                 </div>
 
-                {waitingTickets.length === 0 && (
+                {attendedTickets.length === 0 && (
                   <div className="text-center py-12">
                     <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
                     <h3 className="text-xl font-semibold text-slate-900 mb-2">

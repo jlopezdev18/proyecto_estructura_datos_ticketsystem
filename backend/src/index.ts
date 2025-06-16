@@ -8,6 +8,7 @@ import clientRoutes from './routes/clientRoute'
 import serviceRoutes from './routes/serviceRoute'
 import windowRoutes from './routes/windowRoute'
 import ticketRoutes from './routes/ticketRoute'
+import userRoutes from './routes/userRoute'
 
 const PORT = process.env.PORT || 3000
 
@@ -30,6 +31,7 @@ app.use('/api/clients', clientRoutes)
 app.use('/api/services', serviceRoutes)
 app.use('/api/windows', windowRoutes)
 app.use('/api/tickets', ticketRoutes)
+app.use('/api/users', userRoutes)
 // Routes
 app.use(rootRoutes)
 

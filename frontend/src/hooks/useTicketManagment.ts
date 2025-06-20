@@ -24,14 +24,14 @@ export const useTicketManagement = (selectedWindow: string) => {
   const handleCallNext = () => {
     if (ticketsEnEspera.length > 0) {
       const nextTicket = ticketsEnEspera[0]
-      setCurrentTicket(nextTicket)
+      setCurrentTicket(nextTicket ?? null)
 
       const newQueue = ticketsEnEspera.slice(1)
       const newTicket = generateNewTicket(ticketCounter)
       setTicketCounter((prev) => prev + 1)
 
       setTicketsEnEspera([...newQueue, newTicket])
-      showToast(`Llamando ticket ${nextTicket.ticket}`, `Cliente: ${nextTicket.cliente}`)
+      showToast(`Llamando ticket ${nextTicket!.ticket}`, `Cliente: ${nextTicket!.cliente}`)
     } else {
       showToast("No hay tickets en espera", "La cola de tickets está vacía.", "destructive")
     }

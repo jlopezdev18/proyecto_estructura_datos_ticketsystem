@@ -13,6 +13,7 @@ import { Route as PanelRouteImport } from './routes/panel'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as KioskIndexRouteImport } from './routes/kiosk/index'
 import { Route as CashierIndexRouteImport } from './routes/cashier/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
 
 const PanelRoute = PanelRouteImport.update({
   id: '/panel',
@@ -34,16 +35,23 @@ const CashierIndexRoute = CashierIndexRouteImport.update({
   path: '/cashier/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/panel': typeof PanelRoute
+  '/admin': typeof AdminIndexRoute
   '/cashier': typeof CashierIndexRoute
   '/kiosk': typeof KioskIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/panel': typeof PanelRoute
+  '/admin': typeof AdminIndexRoute
   '/cashier': typeof CashierIndexRoute
   '/kiosk': typeof KioskIndexRoute
 }
@@ -51,20 +59,22 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/panel': typeof PanelRoute
+  '/admin/': typeof AdminIndexRoute
   '/cashier/': typeof CashierIndexRoute
   '/kiosk/': typeof KioskIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/panel' | '/cashier' | '/kiosk'
+  fullPaths: '/' | '/panel' | '/admin' | '/cashier' | '/kiosk'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/panel' | '/cashier' | '/kiosk'
-  id: '__root__' | '/' | '/panel' | '/cashier/' | '/kiosk/'
+  to: '/' | '/panel' | '/admin' | '/cashier' | '/kiosk'
+  id: '__root__' | '/' | '/panel' | '/admin/' | '/cashier/' | '/kiosk/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   PanelRoute: typeof PanelRoute
+  AdminIndexRoute: typeof AdminIndexRoute
   CashierIndexRoute: typeof CashierIndexRoute
   KioskIndexRoute: typeof KioskIndexRoute
 }
@@ -99,12 +109,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CashierIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   PanelRoute: PanelRoute,
+  AdminIndexRoute: AdminIndexRoute,
   CashierIndexRoute: CashierIndexRoute,
   KioskIndexRoute: KioskIndexRoute,
 }

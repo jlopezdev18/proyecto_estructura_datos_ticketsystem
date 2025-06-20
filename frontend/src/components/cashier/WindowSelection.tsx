@@ -18,6 +18,7 @@ export function WindowSelection({ onWindowSelect }: WindowSelectionProps) {
       setIsLoading(true);
       const response = await axios.get('http://localhost:3000/api/windows');
       setWindows(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         response.data.map((window: any) => ({
           ...window,
           services: window.services.split(',')

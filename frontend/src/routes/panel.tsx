@@ -1,9 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Users,
   Clock,
-  AlertCircle,
   CheckCircle,
   //   Play,
   Volume2,
@@ -99,7 +99,7 @@ function RouteComponent() {
   }, []);
 
   const callTicket = (ticket: string, windowNumber: number, service: string) => {
-    const texto = `Ticket ${ticket}, favor presentarse a la  ventanilla ${windowNumber}`;
+    const texto = `Ticket ${ticket}, favor presentarse a la  ventanilla ${windowNumber} para el servicio de ${service}.`;
 
     const speech = new SpeechSynthesisUtterance(texto);
     speech.lang = "es-HN"; // Puedes usar "en-US", "es-ES", etc.
@@ -285,7 +285,7 @@ function RouteComponent() {
 
               <div className="p-6">
                 <div className="space-y-4">
-                  {attendedTickets.map((ticket, index) => (
+                  {attendedTickets.map((ticket) => (
                     <div
                       key={ticket.id}
                       className="bg-slate-50 rounded-xl p-5 border border-slate-200 hover:border-slate-300 transition-all duration-200 hover:shadow-md transform hover:-translate-y-1"

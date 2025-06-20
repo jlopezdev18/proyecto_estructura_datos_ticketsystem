@@ -301,3 +301,46 @@ export const finishTicket = async (req: Request, res: Response): Promise<void> =
     handleError(res, error);
   }
 }
+
+
+export async function getServiceStats(req: Request, res: Response): Promise<void> {
+  const service = req.params.serviceName;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+
+  const tickets = await Ticket.findAll({
+    where: {
+      service,
+      createdAt: { [Op.gte]: today },
+    },
+  });
+
+  
+  const attended = tickets.filter(t => t.status === "finished");
+
+  
+  const absent = tickets.filter(t => t.isAbsent);
+
+  
+  const waitTimes = attended
+    .filter(t => t.attendedAt && t.finishedAt)
+    .map(
+      t => (new Date(t.finishedAt!).getTime() - new Date(t.attendedAt!).getTime()) / 60000
+    );
+  const averageWaitTime =
+    waitTimes.length > 0
+      ? (waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length).toFixed(2)
+      : 0;
+
+  
+  const attending = tickets.filter(t => t.status === "pending");
+
+  res.json({
+    totalServed: attended.length,
+    absentTickets: absent,
+    averageWaitTime,
+    attendingTickets: attending,
+    finishedTickets: attended,
+  });
+}
